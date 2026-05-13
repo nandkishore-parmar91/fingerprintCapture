@@ -1,38 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+   <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <PlatformTarget>x86</PlatformTarget>
-    <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Reference Include="DPFPShrNET">
-      <HintPath>libs\DPFPShrNET.dll</HintPath>
-    </Reference>
-    <Reference Include="DPFPDevNET">
-      <HintPath>libs\DPFPDevNET.dll</HintPath>
-    </Reference>
-    <Reference Include="DPFPEngNET">
-      <HintPath>libs\DPFPEngNET.dll</HintPath>
-    </Reference>
-    <Reference Include="DPFPVerNET">
-      <HintPath>libs\DPFPVerNET.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="libs\*.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.0" />
-    <PackageReference Include="SourceAFIS" Version="3.14.0" />
+    <PackageReference Include="SourceAFIS" Version="3.14.0" /> <!-- ✅ keep -->
   </ItemGroup>
-
 </Project>

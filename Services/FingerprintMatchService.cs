@@ -1,119 +1,103 @@
-using DPFP;
-using DPFP.Processing;
-using DPFP.Verification;
-using FingerprintService.Data;
+using SourceAFIS;
 using FingerprintService.Models;
 
 namespace FingerprintService.Services
 {
     public class FingerprintMatchService
     {
-        private readonly AppDbContext _db;
-
-        public FingerprintMatchService(AppDbContext db)
+        // PNG Base64 → SourceAFIS Template Base64
+        public EnrollResponse CreateTemplate(string pngBase64)
         {
-            _db = db;
+            try
+            {
+                // Convert base64 PNG to bytes
+                var imageBytes = Convert.FromBase64String(pngBase64);
+
+                // Create SourceAFIS fingerprint image from PNG bytes
+                var fingerprintImage = new FingerprintImage(imageBytes);
+
+                // Extract template
+                var template = new FingerprintTemplate(fingerprintImage);
+
+                // Serialize template to bytes → base64 string for storage
+                var templateBytes = template.ToByteArray();
+                var templateBase64 = Convert.ToBase64String(templateBytes);
+
+                Console.WriteLine($"✅ Template created successfully. Size: {templateBytes.Length} bytes");
+
+                return new EnrollResponse
+                {
+                    Success = true,
+                    Template = templateBase64
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ CreateTemplate error: {ex.Message}");
+                throw new Exception($"Failed to create template: {ex.Message}");
+            }
         }
 
-        public async Task<bool> EnrollAsync(string userId, string sampleBase64)
+        // PNG Base64 + stored templates → matched userId
+        public MatchResponse MatchTemplate(string pngBase64, List<StoredTemplate> templates)
         {
-            // 1. Deserialize Sample from frontend
-            var sampleBytes = Convert.FromBase64String(sampleBase64);
-            var sample = new DPFP.Sample();
-            sample.DeSerialize(sampleBytes);
-
-            // 2. Extract features
-            var extractor = new FeatureExtraction();
-            var feedback = DPFP.Capture.CaptureFeedback.None;
-            var featureSet = new FeatureSet();
-            extractor.CreateFeatureSet(
-                sample,
-                DataPurpose.Enrollment,
-                ref feedback,
-                ref featureSet
-            );
-
-            if (feedback != DPFP.Capture.CaptureFeedback.Good)
-                throw new Exception($"Poor quality sample: {feedback}");
-
-            // 3. Create enrollment template
-            var enrollment = new Enrollment();
-            enrollment.AddFeatures(featureSet);
-
-            // SDK needs enough samples — keep adding until template is ready
-            // For our use case (1 scan = 1 enroll), we proceed even if FeaturesNeeded > 0
-            if (enrollment.Template == null)
-                throw new Exception("Could not create template from sample");
-
-            // 4. Serialize and save
-            byte[]? templateBytes = null;
-            enrollment.Template.Serialize(ref templateBytes);
-
-            if (templateBytes == null)
-                throw new Exception("Template serialization failed");
-
-            // Remove existing enrollment for this user
-            var existing = _db.FingerprintTemplates
-                .Where(f => f.UserId == userId)
-                .ToList();
-            _db.FingerprintTemplates.RemoveRange(existing);
-
-            _db.FingerprintTemplates.Add(new FingerprintTemplate
+            try
             {
-                Id = Guid.NewGuid().ToString(),
-                UserId = userId,
-                Template = templateBytes,
-                CreatedAt = DateTime.UtcNow
-            });
+                // Convert base64 PNG to bytes
+                var imageBytes = Convert.FromBase64String(pngBase64);
 
-            await _db.SaveChangesAsync();
-            return true;
-        }
+                // Create probe template from PNG
+                var fingerprintImage = new FingerprintImage(imageBytes);
+                var probeTemplate = new FingerprintTemplate(fingerprintImage);
 
-        public async Task<MatchResponse> MatchAsync(string sampleBase64)
-        {
-            // 1. Deserialize Sample
-            var sampleBytes = Convert.FromBase64String(sampleBase64);
-            var sample = new DPFP.Sample();
-            sample.DeSerialize(sampleBytes);
+                // Create matcher with probe
+                var matcher = new FingerprintMatcher(probeTemplate);
 
-            // 2. Extract features for verification
-            var extractor = new FeatureExtraction();
-            var feedback = DPFP.Capture.CaptureFeedback.None;
-            var featureSet = new FeatureSet();
-            extractor.CreateFeatureSet(
-                sample,
-                DataPurpose.Verification,
-                ref feedback,
-                ref featureSet
-            );
+                double bestScore = 0;
+                string? bestUserId = null;
 
-            if (feedback != DPFP.Capture.CaptureFeedback.Good)
-                return new MatchResponse { Matched = false };
+                // Match against all stored templates
+                foreach (var stored in templates)
+                {
+                    try
+                    {
+                        var templateBytes = Convert.FromBase64String(stored.Template);
+                        var candidateTemplate = new FingerprintTemplate(templateBytes);
 
-            // 3. Match against all enrolled
-            var verifier = new Verification();
-            var allEnrolled = _db.FingerprintTemplates.ToList();
+                        var score = matcher.Match(candidateTemplate);
+                        Console.WriteLine($"Score for {stored.UserId}: {score}");
 
-            foreach (var enrolled in allEnrolled)
-            {
-                var template = new DPFP.Template();
-                template.DeSerialize(enrolled.Template);
+                        if (score > bestScore)
+                        {
+                            bestScore = score;
+                            bestUserId = stored.UserId;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"⚠️ Error matching template for {stored.UserId}: {ex.Message}");
+                    }
+                }
 
-                var result = new Verification.Result();
-                verifier.Verify(featureSet, template, ref result);
+                Console.WriteLine($"Best score: {bestScore} for userId: {bestUserId}");
 
-                if (result.Verified)
+                // Threshold — SourceAFIS recommends 40
+                if (bestScore >= 20 && bestUserId != null)
                 {
                     return new MatchResponse
                     {
                         Matched = true,
-                        UserId = enrolled.UserId
+                        UserId = bestUserId
                     };
                 }
-            }
 
-            return new MatchResponse { Matched = false };
+                return new MatchResponse { Matched = false };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ MatchTemplate error: {ex.Message}");
+                throw new Exception($"Failed to match template: {ex.Message}");
+            }
         }
     }
 }
