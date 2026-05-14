@@ -55,6 +55,7 @@ namespace FingerprintService.Controllers
                 return StatusCode(500, new { message = ex.Message });
             }
         }
+        
 
         [HttpGet("health")]
         public IActionResult Health()

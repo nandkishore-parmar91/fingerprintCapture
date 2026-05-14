@@ -7,6 +7,5 @@ namespace FingerprintService.Data
         public AppDbContext(DbContextOptions<AppDbContext> options)
             : base(options) { }
 
-        // ✅ Removed FingerprintTemplates — Node.js handles storage now
     }
 }

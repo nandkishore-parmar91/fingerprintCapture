@@ -6,11 +6,13 @@ namespace FingerprintService.Models
         public string PngBase64 { get; set; } = string.Empty;
     }
 
-    public class EnrollResponse
-    {
-        public bool Success { get; set; }
-        public string Template { get; set; } = string.Empty;
-    }
+
+public class EnrollResponse
+{
+    public bool Success { get; set; }
+    public string Template { get; set; } = string.Empty;
+    public string? Message { get; set; }
+}
 
     public class StoredTemplate
     {
