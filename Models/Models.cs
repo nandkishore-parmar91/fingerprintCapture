@@ -1,3 +1,6 @@
+
+
+
 namespace FingerprintService.Models
 {
     public class EnrollRequest
@@ -6,13 +9,12 @@ namespace FingerprintService.Models
         public string PngBase64 { get; set; } = string.Empty;
     }
 
-
-public class EnrollResponse
-{
-    public bool Success { get; set; }
-    public string Template { get; set; } = string.Empty;
-    public string? Message { get; set; }
-}
+    public class EnrollResponse
+    {
+        public bool Success { get; set; }
+        public string Template { get; set; } = string.Empty;
+        public string? Message { get; set; }
+    }
 
     public class StoredTemplate
     {
@@ -30,5 +32,18 @@ public class EnrollResponse
     {
         public bool Matched { get; set; }
         public string? UserId { get; set; }
+    }
+
+    public class FingerprintTemplateData
+    {
+        public string UserId { get; set; } = string.Empty;
+        public string Template { get; set; } = string.Empty;
+    }
+
+    public class DuplicateCheckRequest
+    {
+        public string NewTemplate { get; set; } = string.Empty;
+
+        public List<FingerprintTemplateData> ExistingTemplates { get; set; } = new();
     }
 }

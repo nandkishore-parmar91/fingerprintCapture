@@ -55,6 +55,42 @@ namespace FingerprintService.Controllers
                 return StatusCode(500, new { message = ex.Message });
             }
         }
+
+        [HttpPost("check-duplicate")]
+public IActionResult CheckDuplicate(
+    [FromBody] DuplicateCheckRequest request
+)
+{
+    try
+    {
+        if (string.IsNullOrEmpty(request.NewTemplate))
+        {
+            return BadRequest(new
+            {
+                message = "NewTemplate is required"
+            });
+        }
+
+        var result =
+            _service.IsDuplicateFingerprint(
+                request.NewTemplate,
+                request.ExistingTemplates
+            );
+
+        return Ok(result);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine(
+            $"❌ Duplicate check error: {ex.Message}"
+        );
+
+        return StatusCode(500, new
+        {
+            message = ex.Message
+        });
+    }
+}
         
 
         [HttpGet("health")]
